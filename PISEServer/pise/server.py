@@ -25,9 +25,10 @@ class Server:
         logger.info("Running membership query on PID #{}".format(os.getpid()))
         logger.debug("Query inputs: %s" % inputs)
         answer, probe_result, ms_time, pre_probe_time, probe_time = self.query_runner.membership_step_by_step(inputs)
-        answer_dynamic = self.dynamic_query_runner.membership_step_by_step(inputs)
+        answer_dynamic, _ = self.dynamic_query_runner.membership_step_by_step(inputs)
         
         if answer == answer_dynamic:
+            logger.debug(answer_dynamic)
             logger.debug("dynamic monitoring phase success!!!! <3")
         else:
             logger.debug(answer_dynamic)

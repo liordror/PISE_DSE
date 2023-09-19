@@ -12,7 +12,6 @@ from pise.entities import MessageTypeSymbol
 NUM_SOLUTIONS = 10
 logger = logging.getLogger(__name__)
 
-
 class QueryRunner:
     def __init__(self, file, callsites_to_monitor, hooks_obj):
         self.file = file
@@ -57,10 +56,12 @@ class QueryRunner:
         if pstate.monitoring_position < len(self.inputs):
             if self.inputs[pstate.monitoring_phase].type == 'RECV':
                 logger.debug("predicates: " + self.inputs[pstate.monitoring_position].predicate.items())
-                for (byte, val) in self.inputs[pstate.monitoring_position].predicate.items():
-                    byte_addr = msg_addr + byte
-                    sym_mem = pstate.read_symbolic_memory_byte(byte_addr)
-                    pstate.write_symbolic_memory_byte(byte_addr, sym_mem == val)
+                preds = self.inputs[pstate.monitoring_position].predicate.items()
+                length = max([byte for (byte, val) in preds])
+                msg = ' ' * length
+                for (byte, val) in preds:
+                    msg[byte] = val
+                pstate.memory.write(msg_addr, msg)
                 pstate.monitoring_position += 1
                 if pstate.monitoring_position == len(self.inputs):
                     pstate.monitoring_result = True
@@ -74,7 +75,7 @@ class QueryRunner:
     def beforeBranchHook(self, se : SymbolicExecutor, pstate: ProcessState, opcode: triton.OPCODE):
         new_pstate = copy.deepcopy(pstate)
         logger.debug("got to before branch hook")
-        if not self.beforeHookPstate:
+        if not self.beforeHookPstate: # save pstate before branch for other path
             self.beforeHookPstate = new_pstate
         else:
             logger.debug("before branch hook error - there is before branch pstate - some error in last afterBranchHook")
@@ -84,13 +85,15 @@ class QueryRunner:
         new_pstate = None
         logger.debug("got to after branch hook")
         if self.beforeHookPstate:
-            if self.beforeHookPstate.second_path_stack.pop() == False:
+            if pstate.second_path_flag == False:
+            # if self.beforeHookPstate.second_path_stack.pop() == False:
                 new_pstate = self.beforeHookPstate
                 constraints = pstate.last_branch_constraint
                 new_pstate.push_constraint(not constraints)
-                new_pstate.second_path_stack.append(True)
+                # new_pstate.second_path_stack.append(True)
                 self.state_stack.append(new_pstate)
-                self.beforeHookPstate = None
+            pstate.second_path_flag == False
+            self.beforeHookPstate = None
         else:
             logger.debug("after branch hook error - there is no before branch pstate")
             exit()
@@ -119,11 +122,13 @@ class QueryRunner:
             self.probing_initial_pstates.append(pstate)
         if len(self.state_stack) > 0:
             new_pstate = self.state_stack.pop()
+            new_pstate.second_path_flag = True
             
             config = Config(seed_format=SeedFormat.COMPOSITE)
             seed = Seed(CompositeData())
             
             new_se = SymbolicExecutor(config, seed)
+            new_se.cbm =self.callback_manager
             new_se.load_process(new_pstate)
             new_se.run()
         else:
@@ -148,7 +153,7 @@ class QueryRunner:
              self.callback_manager.register_mnemonic_callback(callbacks.CbPos.AFTER, mnemonic, self.afterBranchHook)
         self.callback_manager.register_post_execution_callback(self.executionEnded)
         
-        self.callback_manager.register_pre_imported_routine_callback('socket', self.socketHook)
+        self.callback_manager.register_function_callback('socket', self.socketHook)
         self.callback_manager.register_function_callback('inet_pton', self.inetPtonHook)
         self.callback_manager.register_function_callback('connect', self.connectHook)
         
@@ -162,16 +167,19 @@ class QueryRunner:
         seed = Seed(CompositeData()) 
         executor = SymbolicExecutor(config, seed)
         executor.load(self.project)
+        executor.cbm = self.callback_manager
         executor.pstate.monitoring_position = 0
         executor.pstate.query_runner = self
-        executor.pstate.second_path_stack = [False]
+        # executor.pstate.second_path_stack = [False]
         self.set_membership_hooks()
-
+        logger.info('im hereee')
         executor.run()
         
         #monitoring success
         if self.monitoring_result:
-            pass
+            return True, None
+        else:
+            return False, None
 
     
     

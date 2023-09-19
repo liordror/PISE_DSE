@@ -1,8 +1,6 @@
 import copy
 import logging
 
-import angr
-from angr import SimUnsatError
 import tritondse
 from tritondse import SymbolicExecutor, ProcessState
 

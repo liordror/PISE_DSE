@@ -1,8 +1,8 @@
 import logging
 
 from pise import server
-import pise.monitoring_phase
 import pise.hooks_dynamic
+import pise.monitoring_phase
 from tritondse import callbacks, ProcessState
 
 class ToySendCallSite(pise.hooks_dynamic.SendReceiveCallSite):
@@ -46,7 +46,7 @@ class ToyRecvCallSite(pise.hooks_dynamic.SendReceiveCallSite):
 def main():
     logging.getLogger('pise').setLevel(logging.DEBUG)
     # logging.getLogger('angr').setLevel(logging.INFO)
-    query_runner = monitoring_phase.QueryRunner('examples/toy_example/toy_example', [ToySendReceiveCallSite()])
+    query_runner = pise.monitoring_phase.QueryRunner('examples/toy_example/toy_example', [ToySendCallSite(), ToyRecvCallSite()])
     s = server.Server(query_runner)
     s.listen()
 
