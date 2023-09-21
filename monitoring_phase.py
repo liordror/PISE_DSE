@@ -85,6 +85,7 @@ class QueryRunner:
         if self.mode == 'membership':
             return
         logger.info('Setting hooks')
+        # setting hooks for send, recv
         for callsite in self.callsites_to_monitor:
             callsite.set_hook(self.project)
         self.mode = 'membership'
@@ -122,6 +123,7 @@ class QueryRunner:
         #executor.pstate.probed_symbol = None
         
         self.set_membership_hooks()
+        logger.info('finnished setting hooks')
         executor.run()
         
         #monitoring success

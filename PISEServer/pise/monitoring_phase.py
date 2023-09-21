@@ -88,10 +88,11 @@ class QueryRunner:
             if pstate.second_path_flag == False:
             # if self.beforeHookPstate.second_path_stack.pop() == False:
                 new_pstate = self.beforeHookPstate
-                constraints = pstate.last_branch_constraint
-                new_pstate.push_constraint(not constraints)
-                # new_pstate.second_path_stack.append(True)
-                self.state_stack.append(new_pstate)
+                if(pstate.is_path_predicate_updated()):
+                    constraints = pstate.last_branch_constraint
+                    new_pstate.push_constraint(not constraints)
+                    # new_pstate.second_path_stack.append(True)
+                    self.state_stack.append(new_pstate)
             pstate.second_path_flag == False
             self.beforeHookPstate = None
         else:
@@ -135,6 +136,7 @@ class QueryRunner:
             return
     
     def startHook(self, se: SymbolicExecutor, pstate: ProcessState):
+        logger.debug("in start hook")
         pstate.second_path_flag = False
     
     def set_membership_hooks(self):
@@ -156,9 +158,10 @@ class QueryRunner:
              self.callback_manager.register_mnemonic_callback(callbacks.CbPos.AFTER, mnemonic, self.afterBranchHook)
         self.callback_manager.register_post_execution_callback(self.executionEnded)
         
-        self.callback_manager.register_function_callback('socket', self.socketHook)
-        self.callback_manager.register_function_callback('inet_pton', self.inetPtonHook)
-        self.callback_manager.register_function_callback('connect', self.connectHook)
+        #self.callback_manager.register_function_callback('socket', self.socketHook)
+        self.callback_manager.register_pre_imported_routine_callback('socket', self.socketHook)
+        self.callback_manager.register_pre_imported_routine_callback('inet_pton', self.inetPtonHook)
+        self.callback_manager.register_pre_imported_routine_callback('connect', self.connectHook)
         
         self.callback_manager.register_pre_execution_callback(self.startHook)
         
@@ -179,7 +182,6 @@ class QueryRunner:
         executor.pstate.query_runner = self
         # executor.pstate.second_path_stack = [False]
         self.set_membership_hooks()
-        logger.info('im hereee')
         executor.run()
         
         #monitoring success
