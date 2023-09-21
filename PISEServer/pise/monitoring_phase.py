@@ -73,7 +73,7 @@ class QueryRunner:
         return length
     
     def beforeBranchHook(self, se : SymbolicExecutor, pstate: ProcessState, opcode: triton.OPCODE):
-        new_pstate = copy.deepcopy(pstate)
+        new_pstate = copy.copy(pstate) ## TODO: change to deepcopy or something else
         logger.debug("got to before branch hook")
         if not self.beforeHookPstate: # save pstate before branch for other path
             self.beforeHookPstate = new_pstate
@@ -134,6 +134,9 @@ class QueryRunner:
         else:
             return
     
+    def startHook(self, se: SymbolicExecutor, pstate: ProcessState):
+        pstate.second_path_flag = False
+    
     def set_membership_hooks(self):
         logger.debug('entered membership')
         if self.mode == 'membership':
@@ -156,6 +159,10 @@ class QueryRunner:
         self.callback_manager.register_function_callback('socket', self.socketHook)
         self.callback_manager.register_function_callback('inet_pton', self.inetPtonHook)
         self.callback_manager.register_function_callback('connect', self.connectHook)
+        
+        self.callback_manager.register_pre_execution_callback(self.startHook)
+        
+        
         
     def membership_step_by_step(self, inputs):
         self.inputs = inputs

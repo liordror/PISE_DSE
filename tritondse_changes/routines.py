@@ -2226,6 +2226,9 @@ def rtn__ITM_registerTMCloneTable(se: 'SymbolicExecutor', pstate: 'ProcessState'
     logger.debug('_ITM_registerTMCloneTable hooked')
     return 0;
 
+def trn__isoc99_scanf(se: 'SymbolicExecutor', pstate: 'ProcessState'):
+    logger.debug('__isoc99_scanf hooked')
+    return 0;
 
 def rtn___cxa_finalize(se: 'SymbolicExecutor', pstate: 'ProcessState'):
     logger.debug('__cxa_finalize hooked')
