@@ -11,7 +11,7 @@ class ToySendCallSite(pise.hooks_dynamic.SendReceiveCallSite):
         super().__init__()
     
     def set_hook(self, hooks_obj, callback_manager):
-        callback_manager.register_function_callback('recv', hooks_obj.RecvHook)
+        callback_manager.register_pre_imported_routine_callback('recv', hooks_obj.RecvHook)
     
     def extract_arguments(self, pstate):
         length = pstate.registers.edx
@@ -28,7 +28,7 @@ class ToyRecvCallSite(pise.hooks_dynamic.SendReceiveCallSite):
         super().__init__()
     
     def set_hook(self, hooks_obj, callback_manager):
-        callback_manager.register_function_callback('send', hooks_obj.SendHook)
+        callback_manager.register_pre_imported_routine_callback('send', hooks_obj.SendHook)
         
     def extract_arguments(self, pstate : ProcessState):
         length = pstate.registers.edx
