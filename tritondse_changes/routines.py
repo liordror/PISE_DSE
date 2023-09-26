@@ -2199,7 +2199,7 @@ def rtn_close(se: 'SymbolicExecutor', pstate: 'ProcessState'):
 
 def rtn_inet_pton(se: 'SymbolicExecutor', pstate: 'ProcessState'):
     logger.debug('inet_pton hooked')
-    return 0;
+    return 1;
 
 def rtn_connect(se: 'SymbolicExecutor', pstate: 'ProcessState'):
     logger.debug('connect hooked')

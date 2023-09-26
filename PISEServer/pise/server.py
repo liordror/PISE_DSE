@@ -29,9 +29,11 @@ class Server:
         
         if answer == answer_dynamic:
             logger.debug(answer_dynamic)
+            print("success")
             logger.debug("dynamic monitoring phase success!!!! <3")
         else:
             logger.debug(answer_dynamic)
+            print("failure")
             logger.debug("dynamic monitoring phase fail!!! :(:(")
 
         self.stats.add_membership_count(1)

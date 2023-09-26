@@ -37,22 +37,23 @@ class Hooks:
         self.callsite_handlers = callsite_handlers
         #self.query_runner = query_runner
     
-    def RecvHook(self, se : SymbolicExecutor, pstate : ProcessState, addr : int):
-        msg_addr, length = self.callsite_handlers[1].extract_arguments_recv(pstate)
-        pstate.query_runner.recvHook(pstate, se, msg_addr, length)
+    def RecvHook(self, se : SymbolicExecutor, pstate : ProcessState, name : str, addr : int):
+        msg_addr, length = self.callsite_handlers[1].extract_arguments(pstate)
+        return pstate.query_runner.recvHook(pstate, se, msg_addr, length)
         
-         ## TODO: check if this is the right place to skip instruction, i dont think so
-        pstate.cpu.program_counter = pstate.pop_stack_value()  # pop the return value
-        se.skip_instruction()
+        ## TODO: check if this is the right place to skip instruction, i dont think so
+        # pstate.cpu.program_counter = pstate.pop_stack_value()  # pop the return value
+        # se.skip_instruction()
         
         return self.callsite_handlers[1].get_return_value(msg_addr, length, pstate)
     
-    def SendHook(self, se : SymbolicExecutor, pstate : ProcessState, addr : int):
-        msg_addr, length = self.callsite_handlers[0].extract_arguments_send(pstate)
-        pstate.query_runner.sendHook(pstate, se, pstate.memory.read_string(msg_addr), length)
+    def SendHook(self, se : SymbolicExecutor, pstate : ProcessState, name : str, addr : int):
+        msg, length = self.callsite_handlers[0].extract_arguments(pstate)
+        # pstate.memory.read_string(msg_addr)
+        return pstate.query_runner.sendHook(pstate, se, msg, length)
         
         ## TODO: check if this is the right place to skip instruction, i dont think so
-        pstate.cpu.program_counter = pstate.pop_stack_value()  # pop the return value
-        se.skip_instruction()
+        # pstate.cpu.program_counter = pstate.pop_stack_value()  # pop the return value
+        # se.skip_instruction()
         
         return self.callsite_handlers[0].get_return_value(msg_addr, length, pstate)

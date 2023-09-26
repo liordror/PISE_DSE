@@ -14,12 +14,12 @@ class ToySendCallSite(pise.hooks_dynamic.SendReceiveCallSite):
         callback_manager.register_pre_imported_routine_callback('recv', hooks_obj.RecvHook)
     
     def extract_arguments(self, pstate):
-        length = pstate.registers.edx
-        buffer = pstate.registers.rsi
+        length = pstate.cpu.edx
+        buffer = pstate.memory.read(pstate.cpu.rsi, length)
         return buffer, length
     
     def get_return_value(self, buffer, length, pstate):
-        pstate.register.rax = length
+        pstate.cpu.rax = length
         return length
     
 class ToyRecvCallSite(pise.hooks_dynamic.SendReceiveCallSite):
@@ -31,12 +31,12 @@ class ToyRecvCallSite(pise.hooks_dynamic.SendReceiveCallSite):
         callback_manager.register_pre_imported_routine_callback('send', hooks_obj.SendHook)
         
     def extract_arguments(self, pstate : ProcessState):
-        length = pstate.registers.edx
-        buffer = pstate.registers.rsi
+        length = pstate.cpu.edx
+        buffer = pstate.cpu.rsi
         return buffer, length
     
     def get_return_value(self, buffer, length, pstate):
-        pstate.register.rax = length
+        pstate.cpu.rax = length
         return length
     
     

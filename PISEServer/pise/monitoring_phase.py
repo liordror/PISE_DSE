@@ -31,44 +31,55 @@ class QueryRunner:
     def sendHook(self, pstate, se, msg, length):
         #we are in monitoring phase
         logger.debug("got to send hook")
+        # logger.debug(len(self.inputs))
+        # print(self.inputs)
         if pstate.monitoring_position < len(self.inputs):
-            if self.inputs[pstate.monitoring_phase].type == 'SEND':
-                logger.debug("send msg: " + msg)
-                logger.debug("predicates: " + self.inputs[pstate.monitoring_position].predicate.items())
+            if self.inputs[pstate.monitoring_position].type == 'SEND':
+                logger.debug(f"send msg: {msg}")
+                logger.debug("predicates: " + str(self.inputs[pstate.monitoring_position].predicate.items()))
                 for (byte, val) in self.inputs[pstate.monitoring_position].predicate.items():
-                    if byte >= length:
+                    if int(byte) >= length:
                         continue
-                    if msg[byte] != val:
-                        se.stop_exploration()
+                    if msg[int(byte)] != val:
+                        se.abort()
                         #new path from stack
                 pstate.monitoring_position += 1
                 if pstate.monitoring_position == len(self.inputs):
-                    pstate.monitoring_result = True
-                    se.stop_exploration()
+                    print("updated")
+                    self.monitoring_result = True
+                    se.abort()
                     #save final state
             else:
-                se.stop_exploration()
+                se.abort()
                 #new path from stack
         return length
     
     def recvHook(self, pstate, se, msg_addr, length):
         logger.debug("got to recv hook")
+        # logger.debug(len(self.inputs))
+        # logger.debug(f"monitoring_pos: {pstate.monitoring_position}")
         if pstate.monitoring_position < len(self.inputs):
-            if self.inputs[pstate.monitoring_phase].type == 'RECV':
-                logger.debug("predicates: " + self.inputs[pstate.monitoring_position].predicate.items())
+            if self.inputs[pstate.monitoring_position].type == 'RECEIVE':
+                logger.debug("predicates: " + str(self.inputs[pstate.monitoring_position].predicate.items()))
                 preds = self.inputs[pstate.monitoring_position].predicate.items()
-                length = max([byte for (byte, val) in preds])
-                msg = ' ' * length
+                length = min(length, max([int(byte) for (byte, val) in preds]))
+                # TODO: state_stack is empty: maybe add to symbolic path predicate??  
+                msg = b' ' * length
+                msg_l = list(msg)
                 for (byte, val) in preds:
-                    msg[byte] = val
+                    if int(byte) < length:
+                        msg_l[int(byte)] = val
+                logger.debug(msg_l)
+                msg = bytes(msg_l)
                 pstate.memory.write(msg_addr, msg)
                 pstate.monitoring_position += 1
                 if pstate.monitoring_position == len(self.inputs):
-                    pstate.monitoring_result = True
-                    se.stop_exploration()
+                    print("updated")
+                    self.monitoring_result = True
+                    se.abort()
                     #save final state
             else:
-                se.stop_exploration()
+                se.abort()
                 #new path from stack
         return length
     
@@ -89,6 +100,7 @@ class QueryRunner:
             # if self.beforeHookPstate.second_path_stack.pop() == False:
                 new_pstate = self.beforeHookPstate
                 if(pstate.is_path_predicate_updated()):
+                    print("adding state to state_stack")
                     constraints = pstate.last_branch_constraint
                     new_pstate.push_constraint(not constraints)
                     # new_pstate.second_path_stack.append(True)
@@ -98,30 +110,34 @@ class QueryRunner:
         else:
             logger.debug("after branch hook error - there is no before branch pstate")
             exit()
-            
+      
+         
     def socketHook(self, se : SymbolicExecutor, pstate : ProcessState, name : str, addr : int):
         logger.debug("in socket hook")
-        pstate.write_register("rax", 1)
-        pstate.cpu.program_counter = pstate.pop_stack_value()  # pop the return value
-        se.skip_instruction()
+        pstate.write_register("rax", 3)
+        # pstate.cpu.program_counter = pstate.pop_stack_value()  # pop the return value
+        # se.skip_instruction()
     
-    def inetPtonHook(self, se : SymbolicExecutor, pstate : ProcessState, addr : int):
+    def inetPtonHook(self, se : SymbolicExecutor, pstate : ProcessState, name : str, addr : int):
         logger.debug("in inet_pton hook")
         pstate.write_register("rax", 1)
-        pstate.cpu.program_counter = pstate.pop_stack_value()  # pop the return value
-        se.skip_instruction()
+        # pstate.cpu.program_counter = pstate.pop_stack_value()  # pop the return value
+        # se.skip_instruction()
     
-    def connectHook(self, se : SymbolicExecutor, pstate : ProcessState, addr : int):
+    def connectHook(self, se : SymbolicExecutor, pstate : ProcessState, name : str, addr : int):
         logger.debug("in connect hook")
-        pstate.write_register("rax", 1)
-        pstate.cpu.program_counter = pstate.pop_stack_value()  # pop the return value
-        se.skip_instruction()
+        pstate.write_register("rax", 0)
+        # pstate.cpu.program_counter = pstate.pop_stack_value()  # pop the return value
+        # se.skip_instruction()
+    
 
     def executionEnded(self, se: SymbolicExecutor, pstate: ProcessState):
         logger.debug("got to end of exe path")
+        # logger.debug(self.state_stack)
         if pstate.monitoring_position == len(self.inputs):
             self.probing_initial_pstates.append(pstate)
         if len(self.state_stack) > 0:
+            print("loading a new pstate from state_stack")
             new_pstate = self.state_stack.pop()
             new_pstate.second_path_flag = True
             
@@ -132,8 +148,6 @@ class QueryRunner:
             new_se.cbm =self.callback_manager
             new_se.load_process(new_pstate)
             new_se.run()
-        else:
-            return
     
     def startHook(self, se: SymbolicExecutor, pstate: ProcessState):
         logger.debug("in start hook")
@@ -158,7 +172,7 @@ class QueryRunner:
              self.callback_manager.register_mnemonic_callback(callbacks.CbPos.AFTER, mnemonic, self.afterBranchHook)
         self.callback_manager.register_post_execution_callback(self.executionEnded)
         
-        #self.callback_manager.register_function_callback('socket', self.socketHook)
+        # self.callback_manager.register_function_callback('socket', self.socketHook)
         self.callback_manager.register_pre_imported_routine_callback('socket', self.socketHook)
         self.callback_manager.register_pre_imported_routine_callback('inet_pton', self.inetPtonHook)
         self.callback_manager.register_pre_imported_routine_callback('connect', self.connectHook)
@@ -185,10 +199,7 @@ class QueryRunner:
         executor.run()
         
         #monitoring success
-        if self.monitoring_result:
-            return True, None
-        else:
-            return False, None
+        return self.monitoring_result, None
 
     
     
