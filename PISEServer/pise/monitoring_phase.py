@@ -64,6 +64,7 @@ class QueryRunner:
                 preds = self.inputs[pstate.monitoring_position].predicate.items()
                 length = min(length, max([int(byte) for (byte, val) in preds]))
                 # TODO: state_stack is empty: maybe add to symbolic path predicate??  
+                
                 msg = b' ' * length
                 msg_l = list(msg)
                 for (byte, val) in preds:
@@ -72,6 +73,14 @@ class QueryRunner:
                 logger.debug(msg_l)
                 msg = bytes(msg_l)
                 pstate.memory.write(msg_addr, msg)
+                
+                '''
+                for (byte, val) in preds:
+                    sym_byte = pstate.read_symbolic_memory_byte(msg_addr + int(byte))
+                    constraint = sym_byte.getAst() == val
+                    pstate.push_constraint(constraint)
+                '''
+                
                 pstate.monitoring_position += 1
                 if pstate.monitoring_position == len(self.inputs):
                     print("updated")
@@ -95,12 +104,14 @@ class QueryRunner:
     def afterBranchHook(self, se : SymbolicExecutor, pstate: ProcessState, opcode: triton.OPCODE):
         new_pstate = None
         logger.debug("got to after branch hook")
+        logger.debug(self.state_stack)
         if self.beforeHookPstate:
             if pstate.second_path_flag == False:
             # if self.beforeHookPstate.second_path_stack.pop() == False:
+                logger.debug("not second path!")
                 new_pstate = self.beforeHookPstate
                 if(pstate.is_path_predicate_updated()):
-                    print("adding state to state_stack")
+                    logger.debug("adding state to state_stack")
                     constraints = pstate.last_branch_constraint
                     new_pstate.push_constraint(not constraints)
                     # new_pstate.second_path_stack.append(True)
